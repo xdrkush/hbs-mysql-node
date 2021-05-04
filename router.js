@@ -1,33 +1,36 @@
 // Import
 const express = require('express'),
-      router = express.Router(),
-      sharp = require('sharp');
+    router = express.Router(),
+    sharp = require('sharp');
+
+// Gestion du format des Date
+const format = require('date-format')
 
 // Middleware
 const upload = require('./multer').upload
 
-// Models
-const Product = require('./Product-model'),
-      Category = require('./Category-model');
-
 // Category
 router.route("/category")
     .get((req, res) => {
-        Category.find()
-            .lean()
-            .exec((err, category) => {
-                if (err) throw new Error(err)
-                else res.render("category", { categorie: category })
+        // Variable de récupération de tout les users
+        let sql = `SELECT * FROM categories`;
+        db.query(sql, (error, data, fields) => {
+            if (error) throw error;
+            res.render('category', {
+                status: 200,
+                category: data,
+                message: "categories lists retrieved successfully"
             })
+        })
     })
     .post((req, res) => {
-        const newCategory = new Category({
-            title: req.body.title
-        })
-
-        newCategory.save((err) => {
-            if (err) throw new Error(err)
-            else res.send("save ok !")
+        let sql = `INSERT INTO categories (title) values(?)`;
+        let values = [
+            req.body.title
+        ];
+        db.query(sql, [values], function (err) {
+            if (err) throw err;
+            res.json("save ok !")
         })
     })
 
@@ -35,25 +38,20 @@ router.route("/category")
 // Home
 router.route("/")
     .get((req, res) => {
-        Product
-            .find()
-            .populate("category")
-            .lean()
-            .exec((err, produit) => {
-                console.log(produit)
-                if (err) throw new Error(err)
-                else {
-                    Category.find()
-                        .lean()
-                        .exec((err, category) => {
-                            if (err) throw new Error(err)
-                            return res.render("index", {
-                                Product: produit,
-                                Category: category
-                            })
-                        })
-                }
+        const sqlCategory = 'SELECT * FROM categories'
+        const sqlProduct = 'SELECT * FROM products p INNER JOIN covers c ON c.id = p.cover'
+        db.query(sqlCategory, (error, category) => {
+            if (error) throw error;
+            db.query(sqlProduct, (err, product) => {
+                if (err) throw err;
+                return res.render("index", {
+                    status: 200,
+                    Product: product,
+                    Category: category,
+                    message: "categories lists retrieved successfully"
+                })
             })
+        })
     })
     .post(upload.single("cover"), (req, res) => {
         const file = req.file;
@@ -62,38 +60,39 @@ router.route("/")
             .resize(200)
             .webp({
                 quality: 80
-            }) // => "webp", format google
+            })
             //.rotate(90)
             .toFile('./public/uploads/web' + file.originalname.split('-').slice(0, -1).join('-') + ".webp", (err, info) => { });
 
-        const newProduct = new Product({
-            title: req.body.title,
-            content: req.body.content,
-            price: req.body.price,
-            category: req.body.category
+        const cover = [
+            file.filename, // Filename
+            file.originalname, // Originalname
+            file.path.replace("public", ""), // Path
+            `/uploads/web${file.originalname.split('-').slice(0, -1).join('-')}.webp`, // UrlSharp
+            format('yyyy-MM-dd', new Date()) // createAt
+        ]
 
-        });
-
-        if (file) {
-            newProduct.cover = {
-                name: file.filename,
-                originalname: file.originalname,
-                //path:"uploads/" + filename
-                path: file.path.replace("public", ""),
-                urlSharp: '/uploads/web' + file.originalname.split('-').slice(0, -1).join('-') + ".webp",
-                createAt: Date.now()
-            }
-        }
-
-        newProduct.save(function (err) {
-            if (err) throw new Error(err)
-            else res.send('save ok')
+        db.query(`INSERT INTO covers (name, originalname, path, urlSharp, createAt) values(?)`, [cover], function (err, data, next) {
+            if (err) throw err;
+            const values = [
+                req.body.title,
+                req.body.content,
+                Number(req.body.price),
+                req.body.category,
+                data.insertId
+            ]
+            db.query(`INSERT INTO products (title, content, price, category, cover) values(?)`, [values], function (err, data) {
+                if (err) throw err;
+                console.log(data)
+                return res.json("save ok !")
+            })
         })
+
     })
     .delete((req, res) => {
-        /*pour supprimer toutes les variables*/
-        Product.deleteMany(function (err) {
-            if (err) throw new Error(err)
+        let sql = `DELETE FROM products`;
+        db.query(sql, function (err, data, fields) {
+            if (err) throw err;
             else res.send('delete ok')
         })
     })
@@ -102,47 +101,41 @@ router.route("/")
 // Home /:id
 router.route("/:id")
     .get((req, res) => {
-        Product.findById(req.params.id)
-            .lean()
-            .exec((err, produit) => {
-                if (err) throw err
-                else {
-                    console.log(produit)
-                    res.render("edition", {
-                        id: produit._id,
-                        title: produit.title,
-                        content: produit.content,
-                        price: produit.price
-                    })
-                }
+        // Variable de récupération de tout les users
+        let sql = `SELECT * FROM products WHERE id = '${req.params.id}';`;
+
+        db.query(sql, (error, data) => {
+            if (error) throw error;
+            return res.render("edition", {
+                id: data[0].id,
+                title: data[0].title,
+                content: data[0].content,
+                price: data[0].price
             })
+        })
     })
     .put((req, res) => {
-        Product.findByIdAndUpdate(
-            //condition
-            { _id: req.params.id },
-            //update
-            {
-                title: req.body.title,
-                content: req.body.content,
-                price: req.body.price
-            },
-            //option
-            // { multi: true }, /*pour faire plusieurs modif en même temps*/
-            //executer la fonction
-            (err) => {
-                if (err) throw new Error(err)
-                else res.send("update ok !")
-            }
-        )
+        const sql = `UPDATE products SET ? WHERE id = ?;`
+
+        const values = {
+            title: req.body.title,
+            content: req.body.content,
+            price: Number(req.body.price)
+        }
+
+        db.query(sql, [values, req.params.id], function (err, edit) {
+            if (err) throw err;
+            return res.send("update ok !")
+        })
     })
     .delete((req, res) => {
-        /*pour supprimer 1 seule variable, en fonction de son id*/
-        Product.deleteOne({
-            _id: req.params.id
-        }, (err) => {
-            if (err) throw new Error(err)
-            else res.send("product delete")
+        const sql = `DELETE FROM products WHERE id = ?`;
+        const values = [
+            req.params.id
+        ];
+        db.query(sql, [values], function (err, del, fields) {
+            if (err) throw err;
+            return res.send('Product deleted !')
         })
     })
 

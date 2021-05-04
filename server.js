@@ -1,12 +1,14 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const mongoose = require('mongoose');
+const mysql = require('mysql');
 const exphbs = require('express-handlebars');
 const methodOverride = require('method-override');
 
 //express
 const port = process.env.PORT || 7777;
 const app = express();
+
+require('dotenv').config()
 
 //express static
 app.use(express.static("public"))
@@ -27,12 +29,19 @@ app.use(bodyParser.urlencoded({
     extended: true
 }));
 
-//MongoDB
-mongoose.connect("mongodb://localhost:27017/boutiqueGame", {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    useFindAndModify: false
-})
+// Mysql
+db = mysql.createConnection({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE
+});
+
+// Check connexion MySql
+db.connect((err) => {
+    if (err) throw err
+    console.log('connected as id ' + db.threadId);
+});
 
 const ROUTER  = require('./router')
 app.use('/', ROUTER)
