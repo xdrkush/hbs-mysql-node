@@ -6,10 +6,11 @@
             <div class="card">
                 <div class="card-body p-0 text-center">
                     <ul class="list_group list-group-flush pl-0">
+                        {{!-- Boucle de produit resultat du controller '/' method .get --}}
                         {{#each Product }}
                         <li class="list-group-item p-0">
-                            <h3>{{this.title }}</h3>
-                                <p>{{ this.category.title }}</p>
+                            <h3>id: {{ this.id }} : {{this.title }}</h3>
+                            <p>{{ this.category.title }}</p>
                             <span>source sharp</span>
                             <img src="{{this.urlSharp}}" alt="" style="max-width:200px">
                         </li>
@@ -24,7 +25,7 @@
             <h1>POST</h1>
             <div class="card">
                 <div class="card-body">
-
+                    {{!-- Formulaire de création de produit '/' Method Post --}}
                     <form method="POST" action="/" enctype="multipart/form-data">
                         <div class="form-group">
                             <label>Title</label>
@@ -42,6 +43,7 @@
                         <div class="form-group">
                             <label for="exempleFormControlSelect1">Category</label>
                             <select type='number' name="category" class="form-control" id="exempleFormConttrolSelect1">
+                                {{!-- Boucle des category resultat du controller '/' method .get --}}
                                 {{#each Category }}
                                 <option value="{{this.id}}">{{this.title }}</option>
                                 {{/each }}
@@ -65,7 +67,9 @@
             <div class="card">
                 <div class="card-body">
                     <ul class="list_group list-group-flush">
+                        {{!-- Boucle de produit resultat du controller '/' method .get --}}
                         {{#each Product }}
+                        {{!-- Liens pour rejoindre la page ID : '/:id' pour la page d'édition --}}
                         <li class="list-group-item"><a href="/{{this.id}}">{{this.title }}</a></li>
                         {{/each }}
                     </ul>
@@ -80,16 +84,18 @@
                 <div class="card-body">
 
                     <ul class="list-group list-group-flush">
+                        {{!-- Boucle de suppression des produits : resultat du controller '/' method .get --}}
                         {{#each Product }}
                         <li class="list-group-item">
-                            {{this.title }}
-                            <form action="/{{this.id}}/?_method=DELETE" method="post">
+                            {{ this.title }} / id: {{ this.id }}
+                            <form action="/{{this.id}}?_method=DELETE" method="post">
                                 <button type="submit" class="btn btn-danger btn-sm">Effacer</button>
                             </form>
                         </li>
                         {{/each }}
                     </ul>
 
+                    {{!-- Suppression de tout les articles --}}
                     <form action="/?_method=DELETE" method="POST">
                         <div style="margin-top: 1rem">
                             <button type="submit" class="btn btn-danger btn-sm">Effacer tout</button>

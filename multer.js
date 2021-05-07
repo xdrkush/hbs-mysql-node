@@ -1,20 +1,18 @@
 //upload image
+// Doc: https://www.npmjs.com/package/multer
 const multer = require('multer'),
-    path = require('path');
+      path = require('path');
 
-//const { default: algoliasearch } = require('algoliasearch');
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, './public/uploads')
     },
 
     filename: function (req, file, cb) {
-
         const ext = path.extname(file.originalname);
         const date = Date.now();
 
         cb(null, date + '-' + file.originalname)
-        //cb(null, file.originalName + '-' + Date.now() + ext)
     }
 })
 
